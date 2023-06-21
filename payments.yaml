@@ -1,0 +1,632 @@
+openapi: 3.0.3
+info:
+  title: Access for eCommerce Payment API v2
+  description: |-
+    This specification represents the target Payments API
+  termsOfService: https://www.fisglobal.com/en-gb/terms-of-use
+  contact:
+    email: simon.farrow@fisglobal.com
+  version: 2.0.0
+  x-logo:
+    url: worldpay-logo.svg
+externalDocs:
+  description: Access developer docs
+  url: https://developer.worldpay.com/
+servers:
+  - url: https://access.worldpay.com/api
+  - url: http://localhost:8080/api
+tags:
+  - name: Payments
+    description: A payment resource
+    externalDocs:
+      description: Find out more about Payments
+      url: https://github.worldpay.com/access-for-ecom-doc/payments-api-v2#payment
+
+paths:
+  /payments:
+    post:
+      tags:
+        - Payments
+      summary: Create a new Payment resource
+      description: Create a new Payment resource and optionally creates and attaches a Payment Instrument
+      operationId: createPayment
+      parameters:
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/hosted'
+        - $ref: '#/components/parameters/hint'
+      requestBody:
+        description: Payment details
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+            examples:
+              payment_no_instrument_req:
+                $ref: '#/components/examples/payment_no_instrument_req'
+              payment_with_card_instrument_req:
+                $ref: '#/components/examples/payment_with_card_instrument_req'
+        required: true
+      responses:
+        '201':
+          description: Payment resource created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+              examples:
+                payment_with_instrument_created:
+                  $ref: '#/components/examples/payment_with_instrument_created'
+                payment_no_instrument_resp:
+                  $ref: '#/components/examples/payment_no_instrument_resp'
+          links:
+            authorize:
+              $ref: '#/components/links/payments:authorize'
+            cancel:
+              $ref: '#/components/links/payments:cancel'
+        '308':
+          description: >
+            If the hosted query parameter is true, a redirect to the Hosted Payment Page will be returned.
+            A Payment resource will be created with no Payment Instrument,
+            the instrument will be added by the Hosted Payment Pages application.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+              examples:
+                payment_no_instrument_resp:
+                  $ref: '#/components/examples/payment_no_instrument_resp'
+          headers:
+            location:
+              schema:
+                type: string
+                format: uri
+                example: https://hosted.worldpay.com/V1StGXR8_Z5jdHi6B-myT
+
+  /payments/{paymentId}:
+    patch:
+      tags:
+        - Payments
+      summary: Update a Payment resource
+      description: Update a Payment resource to add a new Payment Instrument
+      operationId: updatePayment
+      parameters:
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/paymentId'
+      requestBody:
+        description: Payment details with instrument, either by value or by reference
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+            examples:
+              payment_with_apm_instrument_req:
+                $ref: '#/components/examples/payment_with_apm_instrument_req'
+      responses:
+        '200':
+          description: Payment resource updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+              examples:
+                payment_with_instrument_created:
+                  $ref: '#/components/examples/payment_with_instrument_created'
+          links:
+            authorize:
+              $ref: '#/components/links/payments:authorize'
+            cancel:
+              $ref: '#/components/links/payments:cancel'
+    get:
+      tags:
+        - Payments
+      summary: Get a Payment resource
+      description: Retrieve an existing Payment resource
+      operationId: getPayment
+      parameters:
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/paymentId'
+      responses:
+        '200':
+          description: Payment resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+              examples:
+                payment_with_instrument_created:
+                  $ref: '#/components/examples/payment_with_instrument_created'
+          links:
+            authorize:
+              $ref: '#/components/links/payments:authorize'
+            cancel:
+              $ref: '#/components/links/payments:cancel'
+            capture:
+              $ref: '#/components/links/payments:capture'
+            refund:
+              $ref: '#/components/links/payments:refund'
+
+  /payments/{paymentId}/authorize:
+    post:
+      tags:
+        - Payments
+      summary: Authorize this Payment
+      description: Requests authorization of this Payment
+      operationId: authorize
+      parameters:
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/paymentId'
+      requestBody:
+        description: Payment details
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+            examples:
+              payment_with_card_instrument_req:
+                $ref: '#/components/examples/payment_with_card_instrument_req'
+      responses:
+        '200':
+          description: Authorization successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+              examples:
+                payment_with_instrument_authorized:
+                  $ref: '#/components/examples/payment_with_instrument_authorized'
+          links:
+            cancel:
+              $ref: '#/components/links/payments:cancel'
+            capture:
+              $ref: '#/components/links/payments:capture'
+
+  /payments/{paymentId}/cancel:
+    post:
+      tags:
+        - Payments
+      summary: Cancel this Payment
+      description: Requests cancellation of this Payment
+      operationId: cancel
+      parameters:
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/paymentId'
+      responses:
+        '200':
+          description: Cancellation successful
+
+  /payments/{paymentId}/capture:
+    post:
+      tags:
+        - Payments
+      summary: Capture this Payment
+      description: Requests capture of this Payment
+      operationId: capture
+      parameters:
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/paymentId'
+        - in: query
+          name: value
+          description: If present, what value of the payment to capture
+          required: false
+          schema:
+            type: number
+            format: double
+      responses:
+        '200':
+          description: Capture successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+              examples:
+                payment_with_instrument_captured:
+                  $ref: '#/components/examples/payment_with_instrument_captured'
+                payment_with_instrument_partially_captured:
+                  $ref: '#/components/examples/payment_with_instrument_partially_captured'
+          links:
+            cancel:
+              $ref: '#/components/links/payments:cancel'
+            refund:
+              $ref: '#/components/links/payments:refund'
+
+  /payments/{paymentId}/refund:
+    post:
+      tags:
+        - Payments
+      summary: Refund this Payment
+      description: Requests a refund of this Payment
+      operationId: refund
+      parameters:
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/paymentId'
+      responses:
+        '200':
+          description: Refund successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+              examples:
+                payment_with_instrument_refunded:
+                  $ref: '#/components/examples/payment_with_instrument_refunded'
+          links:
+            cancel:
+              $ref: '#/components/links/payments:cancel'
+
+components:
+  schemas:
+    Payment:
+      type: object
+      properties:
+        paymentReference:
+          type: string
+          example: 'Unique merchant reference'
+        merchant:
+          $ref: '#/components/schemas/Merchant'
+        instruction:
+          $ref: '#/components/schemas/Instruction'
+
+    PaymentResponse:
+      type: object
+      properties:
+        paymentReference:
+          type: string
+          example: 'Unique merchant reference'
+        paymentId:
+          type: string
+          example: 'Unique Worldpay Id'
+        paymentState:
+          type: string
+          enum:
+            - PENDING
+            - AUTHORIZED
+            - AUTHORIZING
+            - FAILED
+            - CAPTURED
+            - PARTIALLY_CAPTURED
+            - REJECTED
+            - DISPUTED
+            - REFUNDED
+        _links:
+          allOf:
+            - $ref: '#/components/schemas/Links'
+
+    Instruction:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: double
+          example: 10.00
+        currency:
+          type: integer
+          format: int64
+          example: 840
+        instrument:
+          $ref: '#/components/schemas/Instrument'
+
+    Instrument:
+        oneOf:
+          - $ref: '#/components/schemas/InstrumentCard'
+          - $ref: '#/components/schemas/InstrumentiDeal'
+
+    InstrumentCard:
+      type: object
+      oneOf:
+        - type: object
+          properties:
+            transactionRef:
+              type: string
+              description: A reference for this payment instrument
+              example: myTransactionRef
+            type:
+              type: string
+              description: Plain card
+              example: card/plain
+              enum:
+                - card/plain
+            cardNumber:
+              type: string
+            customer:
+              $ref: '#/components/schemas/Customer'
+        - type: object
+          properties:
+            type:
+              type: string
+              description: Tokenised card
+              example: card/token
+              enum:
+                - card/token
+            href:
+              type: string
+              format: uri
+              example: https://access.worldpay.com/api/token/Uakgb_J5m9g-0JDMbcJqLJ
+
+    InstrumentiDeal:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Type of the payment instrument
+          example: ideal
+          enum:
+            - ideal
+        bankCode:
+          type: string
+
+    Customer:
+      type: object
+      properties:
+        verification:
+          $ref: '#/components/schemas/Verification'
+
+    Merchant:
+      type: object
+      properties:
+        entity:
+          type: string
+        3ds:
+          type: string
+        fraud:
+          type: string
+        capture:
+          type: boolean
+        createToken:
+          type: object
+          properties:
+            type:
+              type: string
+            namespace:
+              type: string
+            description:
+              type: string
+
+    Verification:
+      type: object
+      properties:
+        href:
+          type: string
+          format: uri
+        version:
+          type: number
+          format: double
+        type:
+          type: string
+          enum:
+            - 3ds1
+            - 3ds2
+        eci:
+          type: string
+        authenticationValue:
+          type: number
+          format: double
+        transactionId:
+          type: string
+          format: uuid
+
+
+    Links:
+      type: object
+      properties:
+        _self:
+          type: object
+          properties:
+            href:
+              type: string
+              description: URI to this Payment resource
+              example: https://access.worldpay.com/api/payment/Uakgb_J5m9g-0JDMbcJqLJ
+              format: uri
+        authorize:
+          type: object
+          properties:
+            href:
+              type: string
+              description: URI to authorize this Payment resource
+              example: https://access.worldpay.com/api/payment/Uakgb_J5m9g-0JDMbcJqLJ/authorization
+              format: uri
+        cancel:
+          type: object
+          properties:
+            href:
+              type: string
+              description: URI to cancel this Payment
+              example: https://access.worldpay.com/api/payment/Uakgb_J5m9g-0JDMbcJqLJ/cancel
+              format: uri
+        capture:
+          type: object
+          properties:
+            href:
+              type: string
+              description: URI to capture this Payment resource
+              example: https://access.worldpay.com/api/payment/Uakgb_J5m9g-0JDMbcJqLJ/capture
+              format: uri
+        refund:
+          type: object
+          properties:
+            href:
+              type: string
+              description: URI to refund this Payment resource
+              example: https://access.worldpay.com/api/payment/Uakgb_J5m9g-0JDMbcJqLJ/refund
+              format: uri
+
+  parameters:
+    version:
+      name: X-Worldpay-Api-Version
+      in: header
+      description: The version of the API the request is for
+      required: true
+      schema:
+        type: string
+        format: date
+    paymentId:
+        name: paymentId
+        in: path
+        description: ID of the Payment
+        required: true
+        schema:
+          type: string
+          format: uuid
+    hosted:
+      name: hosted
+      in: query
+      description: Should this payment instrument collection be hosted
+      required: false
+      schema:
+        type: boolean
+    hint:
+      name: hint
+      in: query
+      description: Hints allow specific a merchant to specify actions they'd like use to perform i.e. tokenize
+      required: false
+      schema:
+        type: string
+        enum:
+          - tokenize
+
+  links:
+    payments:authorize:
+      operationRef: '#/paths/~1payment~1{paymentId}/payments:authorization'
+      parameters:
+        paymentId: '$response.body#/paymentId'
+      description: >
+        Use _links/payment:authorize to authorize this payment
+        An authorization link will only be present if a payment instrument is attached
+    payments:cancel:
+      operationRef: '#/paths/~1payment~1{paymentId}/payments:cancel'
+      parameters:
+        paymentId: '$response.body#/paymentId'
+      description: >
+        Use _links/payment:cancel to cancel this payment
+    payments:capture:
+      operationRef: '#/paths/~1payment~1{paymentId}/payments:capture'
+      parameters:
+        paymentId: '$response.body#/paymentId'
+      description: >
+        Use _links/payment:capture to capture this payment
+    payments:refund:
+      operationRef: '#/paths/~1payment~1{paymentId}/payments:refund'
+      parameters:
+        paymentId: '$response.body#/paymentId'
+      description: >
+        Use _links/payment:refund to refund this payment
+
+  examples:
+    payment_with_instrument_created:
+      summary: A payment resource with an attached payment instrument
+      value:
+        paymentReference: myPayment
+        paymentId: Uakgb_J5m9g-0JDMbcJqLJ
+        paymentStatus: PENDING
+        _links:
+          _self:
+            href: https://access.worldpay.com/api/payment/Uakgb_J5m9g-0JDMbcJqLJ
+          payments:cancel:
+            href: https://access.worldpay.com/api/payment/Uakgb_J5m9g-0JDMbcJqLJ/cancel
+          payments:authorize:
+            href: https://access.worldpay.com/api/payment/Uakgb_J5m9g-0JDMbcJqLJ/authorization
+
+    payment_with_instrument_authorized:
+      summary: A successfully authorized payment
+      value:
+        paymentReference: myPayment
+        paymentId: Uakgb_J5m9g-0JDMbcJqLJ
+        paymentStatus: AUTHORIZED
+        _links:
+          _self:
+            href: https://access.worldpay.com/api/payments/Uakgb_J5m9g-0JDMbcJqLJ
+          payments:cancel:
+            href: https://access.worldpay.com/api/payments/Uakgb_J5m9g-0JDMbcJqLJ/cancel
+          payments:capture:
+            href: https://access.worldpay.com/api/payments/Uakgb_J5m9g-0JDMbcJqLJ/capture
+
+
+    payment_with_instrument_captured:
+      summary: A successfully captured payment
+      value:
+        paymentReference: myPayment
+        paymentId: Uakgb_J5m9g-0JDMbcJqLJ
+        paymentStatus: CAPTURED
+        _links:
+          _self:
+              href: https://access.worldpay.com/api/payments/Uakgb_J5m9g-0JDMbcJqLJ
+          payments:cancel:
+            href: https://access.worldpay.com/api/payments/Uakgb_J5m9g-0JDMbcJqLJ/cancel
+          payments:refund:
+            href: https://access.worldpay.com/api/payments/Uakgb_J5m9g-0JDMbcJqLJ/refund
+
+    payment_with_instrument_partially_captured:
+      summary: A successfully partial capture
+      value:
+        paymentReference: myPayment
+        paymentId: Uakgb_J5m9g-0JDMbcJqLJ
+        paymentStatus: PARTIAL_CAPTURE
+        _links:
+          _self:
+            href: https://access.worldpay.com/api/payments/Uakgb_J5m9g-0JDMbcJqLJ
+          payments:cancel:
+            href: https://access.worldpay.com/api/payments/Uakgb_J5m9g-0JDMbcJqLJ/cancel
+          payments:refund:
+            href: https://access.worldpay.com/api/payments/Uakgb_J5m9g-0JDMbcJqLJ/refund
+          payments:capture: https://access.worldpay.com/api/payments/Uakgb_J5m9g-0JDMbcJqLJ/capture
+
+    payment_with_instrument_refunded:
+      summary: A successfully refunded payment
+      value:
+        paymentReference: myPayment
+        paymentId: Uakgb_J5m9g-0JDMbcJqLJ
+        paymentStatus: REFUNDED
+        _links:
+          _self:
+            href: https://access.worldpay.com/api/payments/Uakgb_J5m9g-0JDMbcJqLJ
+          payments:cancel:
+            href: https://access.worldpay.com/api/payments/Uakgb_J5m9g-0JDMbcJqLJ/cancel
+
+    payment_no_instrument_resp:
+      summary: A newly created payment resource without an attached payment instrument
+      value:
+        paymentReference: myPayment
+        paymentId: Uakgb_J5m9g-0JDMbcJqLJ
+        paymentStatus: PENDING
+        _links:
+          _self:
+            href: https://access.worldpay.com/api/payments/Uakgb_J5m9g-0JDMbcJqLJ
+          payments:cancel:
+            href: https://access.worldpay.com/api/payments/Uakgb_J5m9g-0JDMbcJqLJ/cancel
+
+    payment_no_instrument_req:
+      summary: A simple payment resource request with no instrument
+      value:
+        paymentReference: myPayment
+        merchant:
+          entity: Entity reference
+        instruction:
+          amount: 100
+          currency: 840
+
+    payment_with_card_instrument_req:
+      summary: A payment resource request including a card payment instrument by value
+      value:
+        paymentReference: myPayment
+        merchant:
+          entity: Entity reference
+          capture: true
+        instruction:
+          amount: 100
+          currency: 840
+          instrument:
+            transactionRef: myTransactionRef
+            type: card/plain
+            cardNumber: 4916346298598576
+
+    payment_with_apm_instrument_req:
+      summary: A payment resource request including a apm payment instrument by value
+      value:
+        paymentReference: myPayment
+        merchant:
+          entity: Entity reference
+        instruction:
+          amount: 100
+          currency: 840
+          instrument:
+            type: ideal
+            bankCode: 276534
